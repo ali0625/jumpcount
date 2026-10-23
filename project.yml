@@ -20,6 +20,7 @@ targets:
     platform: iOS
     sources:
       - path: iOS
+      - path: Shared
     dependencies:
       - target: RopeSkipWatch
         embed: true
@@ -29,19 +30,24 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.personal.ropeskip.ios
         INFOPLIST_KEY_CFBundleDisplayName: 跳绳计数
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         TARGETED_DEVICE_FAMILY: "1,2"
   RopeSkipWatch:
     type: application
     platform: watchOS
     sources:
       - path: Watch
+      - path: Shared
     dependencies:
       - package: JumpCore
         product: JumpCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.personal.ropeskip.watchkitapp
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.ropeskip.ios.watchkitapp
         INFOPLIST_KEY_CFBundleDisplayName: 跳绳
+        INFOPLIST_KEY_WKApplication: YES
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.personal.ropeskip.ios
+        INFOPLIST_KEY_NSMotionUsageDescription: 用于识别跳绳动作并记录运动数据以改进计数。
         TARGETED_DEVICE_FAMILY: "4"
 schemes:
   RopeSkip:

@@ -1,4 +1,4 @@
-name: Apple build
+name: Apple device build
 
 on:
   push:
@@ -10,39 +10,80 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: apple-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-15
+    timeout-minutes: 20
     steps:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Show Xcode version
-        run: xcodebuild -version
+      - name: Show Xcode and device SDKs
+        run: |
+          mkdir -p build/logs
+          xcodebuild -version | tee build/logs/xcode-version.log
+          xcodebuild -showsdks | tee build/logs/sdks.log
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: command -v xcodegen || brew install xcodegen
 
-      - name: Test jump counter and workout history logic
-        run: swift test --package-path Packages/JumpCore
+      - name: Test counter, logging and durable storage
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path Packages/JumpCore 2>&1 | tee build/logs/swift-test.log
 
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build iPhone and Watch simulator targets
-        run: >-
-          xcodebuild
-          -project RopeSkip.xcodeproj
-          -scheme RopeSkip
-          -destination 'generic/platform=iOS Simulator'
-          -derivedDataPath DerivedData
-          CODE_SIGNING_ALLOWED=NO
-          build
+      - name: Build iPhone and embedded Watch device apps without signing
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project RopeSkip.xcodeproj \
+            -scheme RopeSkip \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath DerivedData \
+            -resultBundlePath build/DeviceBuild.xcresult \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            build 2>&1 | tee build/logs/device-build.log
 
-      - name: Upload app build products
-        if: success()
+      - name: Package unsigned device apps
+        shell: bash
+        run: |
+          test -d DerivedData/Build/Products/Debug-iphoneos/RopeSkip.app/Watch/RopeSkipWatch.app
+          ditto -c -k --sequesterRsrc --keepParent \
+            DerivedData/Build/Products/Debug-iphoneos/RopeSkip.app \
+            build/RopeSkip-device-unsigned.zip
+          mkdir -p build/package/Payload
+          ditto DerivedData/Build/Products/Debug-iphoneos/RopeSkip.app build/package/Payload/RopeSkip.app
+          ditto -c -k --keepParent build/package/Payload build/RopeSkip-unsigned.ipa
+          echo '### 真机目标编译成功（未签名）' >> "$GITHUB_STEP_SUMMARY"
+          echo '产物包含 iPhone 和内嵌 Watch App；安装前仍需有效签名与设备配置。没有启动模拟器。' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload unsigned apps
         uses: actions/upload-artifact@v4
         with:
-          name: ropeskip-simulator-build
-          path: DerivedData/Build/Products/Debug-iphonesimulator/
+          name: ropeskip-device-unsigned
+          path: |
+            build/RopeSkip-device-unsigned.zip
+            build/RopeSkip-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload diagnostics even if build fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ropeskip-build-diagnostics
+          path: |
+            build/logs/
+            build/DeviceBuild.xcresult/
           if-no-files-found: warn
+          retention-days: 3

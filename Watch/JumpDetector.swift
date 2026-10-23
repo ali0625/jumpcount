@@ -2,37 +2,58 @@ import CoreMotion
 import Foundation
 import JumpCore
 
+@MainActor
 final class JumpDetector {
-    var onJump: (() -> Void)?
-
+    var onSample: ((Int) -> Void)?
+    var onError: ((String) -> Void)?
     private let motionManager = CMMotionManager()
-    private let queue = OperationQueue()
     private var counter = JumpCounter()
+    private var writer: MotionLogWriter?
+    private var runID: UUID?
 
-    init() {
-        queue.name = "com.personal.ropeskip.motion"
-        queue.maxConcurrentOperationCount = 1
-    }
-
-    func start() {
-        guard motionManager.isAccelerometerAvailable else { return }
+    func start(logURL: URL, sessionID: UUID, startedAt: Date) throws {
+        guard motionManager.isAccelerometerAvailable else { throw SensorError.unavailable }
         counter.reset()
+        writer = try MotionLogWriter(url: logURL, sessionID: sessionID, startedAt: startedAt)
+        runID = sessionID
         motionManager.accelerometerUpdateInterval = 1.0 / 50.0
-        motionManager.startAccelerometerUpdates(to: queue) { [weak self] sample, _ in
-            guard let self, let sample else { return }
-            let acceleration = sample.acceleration
-            let magnitude = sqrt(
-                acceleration.x * acceleration.x
-                    + acceleration.y * acceleration.y
-                    + acceleration.z * acceleration.z
-            )
-            if self.counter.process(magnitude: magnitude, timestamp: sample.timestamp) {
-                DispatchQueue.main.async { self.onJump?() }
+        motionManager.startAccelerometerUpdates(to: .main) { [weak self] sample, error in
+            Task { @MainActor in
+                guard let self, self.runID == sessionID else { return }
+                if let error {
+                    let detail = error.localizedDescription
+                    try? self.writer?.event("sensor_error", count: self.counter.count, detail: detail)
+                    self.onError?("运动数据读取失败：\(detail)")
+                    return
+                }
+                guard let sample else { return }
+                let a = sample.acceleration
+                let magnitude = sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
+                let jumped = self.counter.process(magnitude: magnitude, timestamp: sample.timestamp)
+                do {
+                    try self.writer?.append(MotionLogSample(
+                        timestamp: sample.timestamp, x: a.x, y: a.y, z: a.z,
+                        magnitude: magnitude, filtered: self.counter.filteredSignal,
+                        isJump: jumped, count: self.counter.count
+                    ))
+                } catch {
+                    self.onError?("日志写入失败：\(error.localizedDescription)")
+                    self.writer = nil
+                }
+                self.onSample?(self.counter.count)
             }
         }
     }
 
-    func stop() {
+    func stop(reason: String) throws {
+        runID = nil
         motionManager.stopAccelerometerUpdates()
+        try writer?.finish(count: counter.count, reason: reason)
+        writer = nil
+    }
+
+    enum SensorError: LocalizedError {
+        case unavailable
+        var errorDescription: String? { "没有可用的加速度计，请使用真实 Apple Watch。" }
     }
 }

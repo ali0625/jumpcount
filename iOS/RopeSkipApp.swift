@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct RopeSkipApp: App {
-    @StateObject private var history = WorkoutHistory()
+    @StateObject private var history = WorkoutSync()
 
     var body: some Scene {
         WindowGroup {

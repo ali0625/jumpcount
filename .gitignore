@@ -5,3 +5,10 @@ build/
 *.xcuserstate
 xcuserdata/
 *.xcworkspace/xcuserdata/
+RopeSkip.xcodeproj/
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
+.env
+.env.*
