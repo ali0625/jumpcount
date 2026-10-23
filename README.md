@@ -14,6 +14,8 @@
 
 ## 重要：免费账户与真机安装
 
+已选择验证 xtool 的独立 Watch 实验路线，固定使用未合并 PR #350；环境、最小测试 App、配对、签名与安装步骤见 [XTOOL.md](XTOOL.md)。这条路线已有人报告使用 Windows + 免费账户在 watchOS 27.0.1 的 Ultra 2 上运行成功，本项目 S10 仍需完成真机验证。
+
 当前 Actions 产物为 **未签名的真机 App / IPA**。扩展名为 IPA 不等于已经签名，直接下载仍不能安装到 iPhone 或 S10。
 
 普通 Apple 账户可通过 Xcode Personal Team 在个人设备测试，免费描述文件有效期为 7 天，需要重新构建和安装。官方流程仍需能运行 Xcode 的 Mac；GitHub 云端构建机不能直接连接你本地的手机或手表，也不会替你完成 Personal Team 登录和安装。
