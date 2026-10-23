@@ -1,0 +1,55 @@
+name: RopeSkip
+options:
+  bundleIdPrefix: com.personal.ropeskip
+  deploymentTarget:
+    iOS: "17.0"
+    watchOS: "10.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: YES
+packages:
+  JumpCore:
+    path: Packages/JumpCore
+targets:
+  RopeSkip:
+    type: application
+    platform: iOS
+    sources:
+      - path: iOS
+    dependencies:
+      - target: RopeSkipWatch
+        embed: true
+      - package: JumpCore
+        product: JumpCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.ropeskip.ios
+        INFOPLIST_KEY_CFBundleDisplayName: 跳绳计数
+        TARGETED_DEVICE_FAMILY: "1,2"
+  RopeSkipWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: Watch
+    dependencies:
+      - package: JumpCore
+        product: JumpCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.personal.ropeskip.watchkitapp
+        INFOPLIST_KEY_CFBundleDisplayName: 跳绳
+        TARGETED_DEVICE_FAMILY: "4"
+schemes:
+  RopeSkip:
+    build:
+      targets:
+        RopeSkip: all
+        RopeSkipWatch: all
+    run:
+      config: Debug
+    test:
+      config: Debug

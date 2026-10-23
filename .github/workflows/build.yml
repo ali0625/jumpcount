@@ -1,0 +1,48 @@
+name: Apple build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Test jump counter and workout history logic
+        run: swift test --package-path Packages/JumpCore
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build iPhone and Watch simulator targets
+        run: >-
+          xcodebuild
+          -project RopeSkip.xcodeproj
+          -scheme RopeSkip
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath DerivedData
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Upload app build products
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ropeskip-simulator-build
+          path: DerivedData/Build/Products/Debug-iphonesimulator/
+          if-no-files-found: warn
