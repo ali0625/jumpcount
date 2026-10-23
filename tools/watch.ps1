@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory = $true, Position = 0)]
     [ValidateSet('Check', 'Pair', 'DeveloperMode', 'Login', 'Sign', 'Install')]
     [string]$Action,
-    [string]$AppPath = '.watchos/apps/RopeSkipProbe.app'
+    [string]$AppPath = '.watchos/apps/RopeSkipStandalone.app'
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
