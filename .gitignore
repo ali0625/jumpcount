@@ -14,3 +14,4 @@ RopeSkip.xcodeproj/
 .env.*
 .watchos/
 RopeSkipProbe.xcodeproj/
+RopeSkipStandalone.xcodeproj/

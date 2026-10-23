@@ -24,12 +24,16 @@ final class WorkoutSync: NSObject, ObservableObject, WCSessionDelegate {
             }
             try reload()
         } catch { errorMessage = "无法读取本地记录：\(error.localizedDescription)" }
+        #if ROPE_STANDALONE
+        message = "训练和运动日志保存在手表本地"
+        #else
         guard WCSession.isSupported() else {
             message = "此设备不支持手表同步"
             return
         }
         WCSession.default.delegate = self
         WCSession.default.activate()
+        #endif
     }
 
     func logURL(for id: UUID) throws -> URL {
@@ -45,6 +49,10 @@ final class WorkoutSync: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     func synchronize(retryAll: Bool = false) {
+        #if ROPE_STANDALONE
+        message = "训练和运动日志保存在手表本地"
+        return
+        #else
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         guard session.activationState == .activated else {
@@ -79,6 +87,7 @@ final class WorkoutSync: NSObject, ObservableObject, WCSessionDelegate {
         } catch { errorMessage = "同步排队失败：\(error.localizedDescription)" }
         #else
         message = session.isPaired && session.isWatchAppInstalled ? "等待手表记录和日志" : "请连接并安装手表 App"
+        #endif
         #endif
     }
 

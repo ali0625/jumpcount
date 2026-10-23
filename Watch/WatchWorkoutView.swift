@@ -55,8 +55,22 @@ private struct WatchSyncStatus: View {
             if let error = sync.errorMessage {
                 Text(error).font(.caption2).foregroundStyle(.orange)
             }
+            #if !ROPE_STANDALONE
             Button("重试同步记录与日志") { sync.synchronize(retryAll: true) }
                 .font(.caption2)
+            #endif
+            if !sync.records.isEmpty {
+                Divider()
+                Text("最近训练").font(.caption)
+                ForEach(sync.records.prefix(5)) { record in
+                    VStack(spacing: 2) {
+                        Text("\(record.count) 次 · \(Int(record.duration)) 秒")
+                            .font(.caption)
+                        Text(record.date, format: .dateTime.month().day().hour().minute())
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
     }
 }

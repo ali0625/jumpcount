@@ -1,0 +1,78 @@
+name: Standalone Watch jump counter
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - Watch/**
+      - Shared/**
+      - Packages/**
+      - standalone-project.yml
+      - .github/workflows/watch-standalone.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect build environment
+        run: |
+          mkdir -p build/standalone/logs
+          xcodebuild -version | tee build/standalone/logs/xcode.log
+          xcodebuild -showsdks | tee build/standalone/logs/sdks.log
+      - name: Install XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+      - name: Test shared counter and storage
+        shell: bash
+        run: |
+          set -euo pipefail
+          swift test --package-path Packages/JumpCore 2>&1 | tee build/standalone/logs/tests.log
+      - name: Generate standalone Watch project
+        run: xcodegen generate --spec standalone-project.yml
+      - name: Compile unsigned arm64 Watch app
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project RopeSkipStandalone.xcodeproj -scheme RopeSkipStandalone \
+            -configuration Debug -destination 'generic/platform=watchOS' \
+            -derivedDataPath DerivedData/Standalone \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build \
+            2>&1 | tee build/standalone/logs/build.log
+      - name: Verify and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          app=DerivedData/Standalone/Build/Products/Debug-watchos/RopeSkipStandalone.app
+          python3 - "$app/Info.plist" <<'PY'
+          import plistlib, sys
+          with open(sys.argv[1], "rb") as f:
+              info = plistlib.load(f)
+          assert info.get("WKApplication") is True, info
+          assert info.get("WKWatchOnly") is True, info
+          assert info.get("CFBundleSupportedPlatforms") == ["WatchOS"], info
+          assert "WKCompanionAppBundleIdentifier" not in info, info
+          assert not info.get("WKRunsIndependentlyOfCompanionApp"), info
+          assert info.get("NSMotionUsageDescription"), info
+          PY
+          test "$(lipo -archs "$app/RopeSkipStandalone")" = arm64
+          ditto -c -k --sequesterRsrc --keepParent "$app" build/standalone/RopeSkipStandalone-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: watch-standalone-unsigned
+          path: build/standalone/RopeSkipStandalone-unsigned.zip
+          if-no-files-found: error
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: watch-standalone-diagnostics
+          path: build/standalone/logs
+          retention-days: 3
