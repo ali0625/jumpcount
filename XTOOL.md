@@ -2,6 +2,8 @@
 
 本机使用 xtool 官方项目的未合并 [PR #350](https://github.com/xtool-org/xtool/pull/350)，固定提交 `c46cd6a323d61f693ebe7354f5dcd91918e21f36`。分支提供独立 Watch App 的 `sign-watch` 与 Python 安装原型；不是官方稳定版保证支持的功能。作者验证的是 Ultra 2；本机目标是 S10 / watchOS 27.0.1，需实际验证安装与启动。
 
+WSL 源码另补入两项官方已合并改动：[Anisette 整理 #367](https://github.com/xtool-org/xtool/commit/2afd5307a4097ee5151d0765a9e0adb5241906d7) 和 [修复登录 -80046 的 #380](https://github.com/xtool-org/xtool/commit/e3ce2c402ec142d0d1bd0a0c9a20eb9c2ae8827c)。按此顺序应用，Package.resolved 由 SwiftPM 随 Package.swift 更新，不强行使用官方另一分支的锁文件。Watch 安装助手仍为原 PR 版本。
+
 ## 已准备的环境
 
 - WSL 发行版 `Ubuntu-24.04`，Linux 用户 `ropeskip`；旧 20.04 已按用户要求移除。
@@ -13,6 +15,10 @@
 - 私有手表信息：`.watchos/device.json`；配对密钥：`.watchos/watch-pairing`。整个 `.watchos/` 已被 Git 忽略。
 
 本机验证：xtool 构建成功，21 项 Swift 测试通过；另有需要本地 Xcode.app 的验证被跳过。Windows 安装助手的 4 项 Python 测试通过，依赖一致性检查通过，手机与手表配对成功。上述测试不替代真机签名与启动验证。
+
+补入登录修复后重新构建、21 项 Swift 测试和 SwiftLint 均通过（138 个 Swift 文件，0 违规）。已实际读取 S10 开发者模式为开启。
+
+2026-10-23 本机真机验证：普通 Apple 账户登录成功，使用 GitHub Actions 编译的独立测试包完成签名，通过已配对的 iPhone 将其安装到 S10 / watchOS 27.0.1，安装进度 100%，手表 App 注册表确认存在。描述文件 CMS 校验通过，包含目标手表，有效期至 2026-10-30 17:41（北京时间）。实际启动、按钮与震动需设备主人确认。
 
 这些本机路径在新电脑需要重新准备，`watch.ps1` 不是通用依赖安装器。手机的 Apple USB 连接由 Windows“Apple 设备”应用提供；连接前需启动该应用，并让手机通过 USB 连接且信任电脑。
 
@@ -41,6 +47,8 @@ Pair 时解锁手机与手表，并在手表接受单独的“信任”提示。
 ```
 
 Login 会在当前终端交互式登录；普通免费账户使用密码模式。密码与验证码只在本机终端输入，不发给聊天、不存脚本、不放 GitHub Secrets。xtool 登录状态和开发签名密钥留在 WSL 用户的本地存储中。
+
+新官方登录实现使用 `https://mac-ani.jkcoxson.com` 的 Omnisette 服务生成随机设备的 Anisette 登录数据，服务接收相应随机标识和 provisioning 数据；按源码账户密码和验证码仍只发给 Apple。这是实际使用的第三方依赖，并非全程只连接 Apple。旧 Android Anisette 方式可能返回 `-80046`，已通过上述官方改动替换，不应反复重试旧版本。
 
 Sign 对指定 Watch `.app` 就地签名，并注册当前手表与申请描述文件。Install 通过已配对的 USB iPhone 安装到手表并验证注册结果；最后还需本人打开手表上的“跳绳安装测试”，实际验证按钮和震动。
 
