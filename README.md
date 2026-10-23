@@ -20,6 +20,8 @@
 
 Windows 第三方侧载工具有免费账户的 iPhone 签名能力，但本项目尚未验证它们能完整签名并安装内嵌 Watch App，尤其是你的 iOS 27.0.1 和 S10 的实际 watchOS 版本。不要把“iPhone 安装成功”当作“手表也能安装成功”。免费、纯 Windows 的 S10 安装链路仍待验证；借用兼容的 Mac 使用 Xcode 是已有官方流程的备选。
 
+2026-10-23 核查：[Sideloadly 官方更新日志](https://sideloadly.io/changelog.html)将 v0.71.0 标为最新版本，并明确表示 Apple Watch App 签名支持已加入 Apple Developer Program 的账户，免费 Apple 账户支持计划在下一版加入。当前不能把它作为已支持的免费 Watch 安装方案；后续版本仍需检查更新说明并真机验证。你的手表版本已确认为 watchOS 27.0.1（24R365）。
+
 第一步记录手表实际 watchOS 版本，再验证签名和安装。不需要把 Apple 密码、验证码、证书或私钥放到 GitHub。
 
 官方说明：[Apple 账户与 Personal Team](https://developer.apple.com/support/compare-memberships/)。
