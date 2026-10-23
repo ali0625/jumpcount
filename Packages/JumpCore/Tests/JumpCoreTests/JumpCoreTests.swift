@@ -31,6 +31,7 @@ final class JumpCoreTests: XCTestCase {
         for index in 50..<55 { counter.process(magnitude: 2, timestamp: Double(index) / 50) }
         for index in 55..<60 { counter.process(magnitude: 1, timestamp: Double(index) / 50) }
         for index in 60..<64 { counter.process(magnitude: 2, timestamp: Double(index) / 50) }
+        for index in 64..<75 { counter.process(magnitude: 1, timestamp: Double(index) / 50) }
         XCTAssertEqual(counter.count, 1)
     }
 
@@ -49,6 +50,8 @@ final class JumpCoreTests: XCTestCase {
         var counter = JumpCounter()
         for index in 0..<50 { counter.process(magnitude: 1, timestamp: Double(index) / 50) }
         for index in 50..<55 { counter.process(magnitude: 2, timestamp: Double(index) / 50) }
+        // Relative peaks are confirmed after the fall and lookahead, not on the rise.
+        for index in 55..<65 { counter.process(magnitude: 1, timestamp: Double(index) / 50) }
         XCTAssertEqual(counter.count, 1)
         counter.resume()
         XCTAssertEqual(counter.count, 1)
@@ -61,6 +64,35 @@ final class JumpCoreTests: XCTestCase {
         for index in 0..<50 { counter.process(magnitude: 1, timestamp: Double(index) / 50) }
         XCTAssertFalse(counter.process(magnitude: 3, timestamp: 10))
         XCTAssertEqual(counter.count, 0)
+    }
+
+    func testSmallPeaksAreRetainedWithoutTheOldHighPassAttenuation() {
+        var counter = JumpCounter()
+        for index in 0..<550 {
+            let phase = (index - 50) % 25
+            let magnitude = index >= 50 && phase < 5 ? 1.2 : 1.0
+            counter.process(magnitude: magnitude, timestamp: Double(index) / 50)
+        }
+        XCTAssertEqual(counter.count, 20)
+    }
+
+    func testRelativePeaksCountCyclesOnAnElevatedBaseline() {
+        var counter = JumpCounter()
+        for index in 0..<550 {
+            let phase = (index - 50) % 25
+            let magnitude = index >= 50 && phase < 5 ? 3.2 : 3.0
+            counter.process(magnitude: magnitude, timestamp: Double(index) / 50)
+        }
+        XCTAssertEqual(counter.count, 20)
+    }
+
+    func testSustainedHighAccelerationCountsOnlyOneConfirmedPeak() {
+        var counter = JumpCounter()
+        for index in 0..<300 {
+            let magnitude = (50..<250).contains(index) ? 3.0 : 1.0
+            counter.process(magnitude: magnitude, timestamp: Double(index) / 50)
+        }
+        XCTAssertEqual(counter.count, 1)
     }
 
     func testRecordRoundTripPreservesIdentityAndValues() throws {

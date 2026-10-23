@@ -21,6 +21,8 @@ targets:
     sources:
       - path: iOS
       - path: Shared
+      - path: ThirdParty/peakdetect-LICENSE.txt
+        buildPhase: resources
     dependencies:
       - target: RopeSkipWatch
         embed: true
@@ -38,6 +40,8 @@ targets:
     sources:
       - path: Watch
       - path: Shared
+      - path: ThirdParty/peakdetect-LICENSE.txt
+        buildPhase: resources
     dependencies:
       - package: JumpCore
         product: JumpCore

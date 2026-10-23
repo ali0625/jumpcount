@@ -13,13 +13,19 @@ targets:
   RopeSkipStandalone:
     type: application
     platform: watchOS
-    sources: [Watch, Shared]
+    sources:
+      - path: Watch
+      - path: Shared
+      - path: ThirdParty/peakdetect-LICENSE.txt
+        buildPhase: resources
     dependencies:
       - package: JumpCore
         product: JumpCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ali0625.ropeskip.standalone
+        MARKETING_VERSION: "0.2"
+        CURRENT_PROJECT_VERSION: "2"
         INFOPLIST_KEY_CFBundleDisplayName: 跳绳计数
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKWatchOnly: YES

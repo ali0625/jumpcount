@@ -8,6 +8,7 @@ on:
       - Watch/**
       - Shared/**
       - Packages/**
+      - ThirdParty/**
       - standalone-project.yml
       - .github/workflows/watch-standalone.yml
 
@@ -63,6 +64,7 @@ jobs:
           assert info.get("NSMotionUsageDescription"), info
           PY
           test "$(lipo -archs "$app/RopeSkipStandalone")" = arm64
+          test -f "$app/peakdetect-LICENSE.txt"
           ditto -c -k --sequesterRsrc --keepParent "$app" build/standalone/RopeSkipStandalone-unsigned.zip
       - uses: actions/upload-artifact@v4
         with:

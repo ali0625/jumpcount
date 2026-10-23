@@ -1,14 +1,14 @@
 import Foundation
 
-/// A starting point for detecting wrist acceleration peaks. Calibrate on a real watch.
+/// Relative peak detection adapted from peakdetect; still requires wrist calibration.
 /// Input: acceleration magnitude in g and the sensor's monotonic timestamp in seconds.
 public struct JumpCounter {
     public struct Configuration {
         public var threshold: Double
         public var minimumInterval: TimeInterval
 
-        public init(threshold: Double = 0.25, minimumInterval: TimeInterval = 0.23) {
-            self.threshold = threshold.isFinite ? max(0.05, threshold) : 0.25
+        public init(threshold: Double = 0.15, minimumInterval: TimeInterval = 0.23) {
+            self.threshold = threshold.isFinite ? max(0.05, threshold) : 0.15
             self.minimumInterval = minimumInterval.isFinite ? max(0.15, minimumInterval) : 0.23
         }
     }
@@ -16,14 +16,14 @@ public struct JumpCounter {
     public private(set) var count = 0
     public private(set) var filteredSignal = 0.0
     private let configuration: Configuration
-    private var baseline = 1.0
+    private var peaks: RelativePeakDetector
     private var previousTimestamp: TimeInterval?
     private var lastJumpTimestamp: TimeInterval?
-    private var armed = false
     private var warmupSamples = 0
 
     public init(configuration: Configuration = .init()) {
         self.configuration = configuration
+        self.peaks = RelativePeakDetector(delta: configuration.threshold)
     }
 
     public mutating func reset() {
@@ -32,11 +32,10 @@ public struct JumpCounter {
 
     /// After pausing or a data gap, retain the count but warm up the filters again.
     public mutating func resume() {
-        baseline = 1
         filteredSignal = 0
+        peaks = RelativePeakDetector(delta: configuration.threshold)
         previousTimestamp = nil
         lastJumpTimestamp = nil
-        armed = false
         warmupSamples = 0
     }
 
@@ -49,18 +48,16 @@ public struct JumpCounter {
             if timestamp - previousTimestamp > 0.5 { resume() }
         }
         previousTimestamp = timestamp
-        baseline += 0.04 * (magnitude - baseline)
-        filteredSignal += 0.4 * ((magnitude - baseline) - filteredSignal)
+        // Kept as a zero-centered diagnostic column. Peak detection uses raw
+        // magnitude: the old low-pass/high-pass chain removed small wrist peaks.
+        filteredSignal = magnitude - 1
         warmupSamples += 1
         guard warmupSamples > 15 else { return false }
 
-        // Hysteresis requires a distinct valley before another rising peak.
-        if filteredSignal < configuration.threshold * 0.4 { armed = true }
-        guard armed, filteredSignal >= configuration.threshold else { return false }
-        armed = false
+        guard let peakTimestamp = peaks.process(value: magnitude, timestamp: timestamp) else { return false }
         if let lastJumpTimestamp,
-           timestamp - lastJumpTimestamp < configuration.minimumInterval { return false }
-        lastJumpTimestamp = timestamp
+           peakTimestamp - lastJumpTimestamp < configuration.minimumInterval { return false }
+        lastJumpTimestamp = peakTimestamp
         count += 1
         return true
     }

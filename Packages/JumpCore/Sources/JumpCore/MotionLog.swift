@@ -38,7 +38,7 @@ public final class MotionLogWriter {
         try handle.seekToEnd()
         self.handle = handle
         let date = ISO8601DateFormatter().string(from: startedAt)
-        try event("start", count: 0, detail: "session=\(sessionID.uuidString);date=\(date);threshold_g=0.25;minimum_interval_s=0.23;warmup_samples=15")
+        try event("start", count: 0, detail: "session=\(sessionID.uuidString);date=\(date);algorithm=peakdetect-v1;delta_g=0.15;minimum_interval_s=0.23;warmup_samples=15;lookahead_samples=3;filtered_column=magnitude_minus_1g")
         try flush()
     }
 
