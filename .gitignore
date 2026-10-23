@@ -12,3 +12,5 @@ RopeSkip.xcodeproj/
 *.provisionprofile
 .env
 .env.*
+.watchos/
+RopeSkipProbe.xcodeproj/

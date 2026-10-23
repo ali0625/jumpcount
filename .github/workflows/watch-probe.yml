@@ -1,0 +1,72 @@
+name: Watch installation probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - Probe/**
+      - probe-project.yml
+      - .github/workflows/watch-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect build environment
+        run: |
+          mkdir -p build/probe/logs
+          xcodebuild -version | tee build/probe/logs/xcode.log
+          xcodebuild -showsdks | tee build/probe/logs/sdks.log
+      - name: Install XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+      - name: Generate standalone Watch project
+        run: xcodegen generate --spec probe-project.yml
+      - name: Compile unsigned arm64 Watch app
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -project RopeSkipProbe.xcodeproj -scheme RopeSkipProbe \
+            -configuration Debug -destination 'generic/platform=watchOS' \
+            -derivedDataPath DerivedData/Probe \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO build \
+            2>&1 | tee build/probe/logs/build.log
+      - name: Verify standalone metadata and architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          app=DerivedData/Probe/Build/Products/Debug-watchos/RopeSkipProbe.app
+          python3 - "$app/Info.plist" <<'PY'
+          import plistlib, sys
+          with open(sys.argv[1], "rb") as f:
+              info = plistlib.load(f)
+          assert info.get("WKApplication") is True, info
+          assert info.get("WKWatchOnly") is True, info
+          assert info.get("CFBundleSupportedPlatforms") == ["WatchOS"], info
+          assert "WKCompanionAppBundleIdentifier" not in info, info
+          assert not info.get("WKRunsIndependentlyOfCompanionApp"), info
+          PY
+          test "$(lipo -archs "$app/RopeSkipProbe")" = arm64
+          xcrun vtool -show-build "$app/RopeSkipProbe" > build/probe/logs/binary.log
+          ditto -c -k --sequesterRsrc --keepParent "$app" build/probe/RopeSkipProbe-unsigned.zip
+          echo '独立 Watch 测试 App 已编译为 arm64；仍需本地签名。' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: watch-probe-unsigned
+          path: build/probe/RopeSkipProbe-unsigned.zip
+          if-no-files-found: error
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: watch-probe-diagnostics
+          path: build/probe/logs
+          retention-days: 3
